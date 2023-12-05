@@ -55,6 +55,7 @@ print(CI)
 ```
 
 ## Measure performance
+
 ```{r}
 # Measure performance
 system.time({
@@ -72,8 +73,8 @@ system.time({
 
 **Stratified Bootstrapping With Parallel Processing**
 
-```{r}
-plan(multisession, workers = 2)
+```{r warning=FALSE}
+plan(multisession)
 
 # Perform stratified bootstrapping in parallel
 bootstrap_para <- future_map_dfr(1:n, ~stratified_bootstrap(flights))
@@ -92,9 +93,10 @@ print(CI)
 ```
 
 ## Measure performance
-```{r}
+
+```{r warning=FALSE}
 # Measure performance
-plan(multisession, workers = 2)
+plan(multisession)
 system.time({
   results_parallel <- future_map_dfr(1:n, ~stratified_bootstrap(flights))
 })
