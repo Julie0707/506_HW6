@@ -1,0 +1,101 @@
+---
+title: "hw6"
+author: "jiaqi"
+format: 
+  html:
+    embed-resources: true
+    code-overflow: wrap
+editor: visual
+---
+
+GitHub repository：https://github.com/Julie0707/506_HW6
+
+**Stratified Bootstrapping Without Parallel Processing**
+
+```{r}
+library(nycflights13)
+library(parallel)
+library(furrr)
+library(boot)
+library(future)
+library(dplyr)
+
+n <- 1000
+
+# Stratified Bootstrap Function
+stratified_bootstrap <- function(data) {
+  data %>%
+    group_by(dest) %>%
+    sample_n(size = n(), replace = TRUE) %>%
+    ungroup() %>%
+    group_by(origin) %>%
+    summarize(mean_air_time = mean(air_time, na.rm = TRUE))
+}
+
+# Initialize an empty list for storing bootstrap results
+bootstrap_non_para <- vector("list", n)
+
+# Perform stratified bootstrapping using a for loop
+for (i in 1:n) {
+  bootstrap_non_para[[i]] <- stratified_bootstrap(flights)
+}
+
+# Calculate CI of mean_air_time for each origin
+CI <- do.call(rbind, bootstrap_non_para) %>%
+  group_by(origin) %>%
+  summarize(
+    mean_estimate = mean(mean_air_time),
+    lower_ci = quantile(mean_air_time, 0.025),
+    upper_ci = quantile(mean_air_time, 0.975)
+  )
+
+# Print the results
+print(CI)
+
+```
+
+## Measure performance
+```{r}
+# Measure performance
+system.time({
+  # Initialize an empty list for storing bootstrap results
+  results_nonparallel <- vector("list", n)
+
+  # Perform stratified bootstrapping using a for loop
+  for (i in 1:n) {
+    results_nonparallel[[i]] <- stratified_bootstrap(flights)
+  }
+  
+  do.call(rbind, results_nonparallel)
+})
+```
+
+**Stratified Bootstrapping With Parallel Processing**
+
+```{r}
+plan(multisession, workers = 2)
+
+# Perform stratified bootstrapping in parallel
+bootstrap_para <- future_map_dfr(1:n, ~stratified_bootstrap(flights))
+
+# Calculate CI of mean_air_time for each origin
+CI <- bootstrap_para %>%
+  group_by(origin) %>%
+  summarize(
+    mean_estimate = mean(mean_air_time),
+    lower_ci = quantile(mean_air_time, 0.025),
+    upper_ci = quantile(mean_air_time, 0.975)
+  )
+
+# Print the results
+print(CI)
+```
+
+## Measure performance
+```{r}
+# Measure performance
+plan(multisession, workers = 2)
+system.time({
+  results_parallel <- future_map_dfr(1:n, ~stratified_bootstrap(flights))
+})
+```
